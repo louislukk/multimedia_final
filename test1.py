@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 root = tk.Tk()
-root.title('oxxo.studio')
+root.title('簡易圖片修改器')
 root.geometry('200x200')
 
 def show():
