@@ -9,44 +9,52 @@ root.geometry('800x600')
 
 img_path = ""
 initial_img = None
-def show(path):
-    global img                              
-    img = Image.open(path)                  
-    w, h = img.size                         
-    tk_img = ImageTk.PhotoImage(img)       
-    canvas.delete('all')                    
-    canvas.config(scrollregion=(0,0,w,h))  
-    canvas.create_image(0, 0, anchor='nw', image=tk_img)   
-    canvas.tk_img = tk_img                  
-    scale_1.set(0)                         
-    scale_2.set(0)                          
-    scale_3.set(0)                          
-    scale_4.set(0)    
-    initial_img = img.copy()
+img = None
+saved_enhance_values = {}
 
+def show_image(update_scales=True, updated_img=None):
+    global img
+    if updated_img:
+        img = updated_img
+    w, h = img.size
+    tk_img = ImageTk.PhotoImage(img)
+    canvas.delete('all')
+    canvas.config(scrollregion=(0, 0, w, h))
+    canvas.create_image(0, 0, anchor='nw', image=tk_img)
+    canvas.tk_img = tk_img
+
+    if update_scales:
+        scale_1.set(0)
+        scale_2.set(0)
+        scale_3.set(0)
+        scale_4.set(0)
 def enhance(e):
-    global output                                         
-    output = img.copy()                                    
-    brightness = ImageEnhance.Brightness(output)          
-    output = brightness.enhance(1+int(scale_1.get())/100)  
-    contrast = ImageEnhance.Contrast(output)               
-    output = contrast.enhance(1+int(scale_2.get())/100)    
-    color = ImageEnhance.Color(output)                     
-    output = color.enhance(1+int(scale_3.get())/100)      
-    sharpness = ImageEnhance.Sharpness(output)             
-    output = sharpness.enhance(1+int(scale_4.get())/10)    
+    saved_enhance_values['scale_1'] = int(scale_1.get())
+    saved_enhance_values['scale_2'] = int(scale_2.get())
+    saved_enhance_values['scale_3'] = int(scale_3.get())
+    saved_enhance_values['scale_4'] = int(scale_4.get())
+    
+    output = img.copy()
+    brightness = ImageEnhance.Brightness(output)
+    output = brightness.enhance(1 + saved_enhance_values['scale_1'] / 100)
+    contrast = ImageEnhance.Contrast(output)
+    output = contrast.enhance(1 + saved_enhance_values['scale_2'] / 100)
+    color = ImageEnhance.Color(output)
+    output = color.enhance(1 + saved_enhance_values['scale_3'] / 100)
+    sharpness = ImageEnhance.Sharpness(output)
+    output = sharpness.enhance(1 + saved_enhance_values['scale_4'] / 10)
 
-    tk_img = ImageTk.PhotoImage(output)                   
-    canvas.delete('all')                                   
-    canvas.create_image(0, 0, anchor='nw', image=tk_img)   
+    tk_img = ImageTk.PhotoImage(output)
+    canvas.delete('all')
+    canvas.create_image(0, 0, anchor='nw', image=tk_img)
     canvas.tk_img = tk_img                                 
 
 def open_file():
     global img, img_path, initial_img
     try:
-        img_path = filedialog.askopenfilename(filetypes=[('png', '.png'), ('jpg', '.jpg'), ('gif', '*.gif')])
+        img_path = filedialog.askopenfilename(filetypes=[("Image files", ".png;.jpg;.jpeg;.gif")])
         img = Image.open(img_path)
-        initial_img = img.copy() 
+        initial_img = img.copy() if img else None  
         show_image()
     except Exception as e:
         messagebox.showerror('Error', str(e))
@@ -71,41 +79,44 @@ def rotate_image():
     img = img.rotate(-90)
     show_image()
 
-
 def reset_image():
     global img
-    img = initial_img.copy()
-    show_image()
-
+    if initial_img:
+        img = initial_img.copy()
+        show_image()
 def adjust_red(inc):
     global img
-    img = img.convert('RGB')
-    r, g, b = img.split()
-    r = r.point(lambda i: i + int(inc))
-    img = Image.merge('RGB', (r, g, b))
-    show_image()
-
+    if img:
+        img_copy = img.copy()  
+        img_copy = img_copy.convert('RGB')
+        r, g, b = img_copy.split()
+        r = r.point(lambda i: i + int(inc))
+        img_copy = Image.merge('RGB', (r, g, b))
+        show_image(update_scales=True, updated_img=img_copy)  
 
 def adjust_green(inc):
     global img
-    img = img.convert('RGB')
-    r, g, b = img.split()
-    g = g.point(lambda i: i + int(inc))
-    img = Image.merge('RGB', (r, g, b))
-    show_image()
+    if img:
+        img_copy = img.copy()
+        img_copy = img_copy.convert('RGB')
+        r, g, b = img_copy.split()
+        g = g.point(lambda i: i + int(inc))
+        img_copy = Image.merge('RGB', (r, g, b))
+        show_image(update_scales=True, updated_img=img_copy) 
 
 def adjust_blue(inc):
     global img
-    img = img.convert('RGB')
-    r, g, b = img.split()
-    b = b.point(lambda i: i + int(inc))
-    img = Image.merge('RGB', (r, g, b))
-    show_image()    
-
+    if img:
+        img_copy = img.copy()
+        img_copy = img_copy.convert('RGB')
+        r, g, b = img_copy.split()
+        b = b.point(lambda i: i + int(inc))
+        img_copy = Image.merge('RGB', (r, g, b))
+        show_image(update_scales=True, updated_img=img_copy) 
 
 menu = tk.Menu(root)                           
 menubar = tk.Menu(menu)
-menubar.add_command(label="開啟", command=open) 
+menubar.add_command(label="開啟", command=open_file) 
 menubar.add_command(label="儲存", command=save) 
 menubar.add_command(label="結束", command=exit)  
 menu.add_cascade(label='檔案', menu=menubar)    
@@ -114,7 +125,7 @@ root.config(menu=menu)
 frame = tk.Frame(root, width=300, height=300)   
 frame.place(x=10,y=10)
 
-canvas = tk.Canvas(frame, width=300, height=300, bg='#fff')  
+canvas = tk.Canvas(frame, width=400, height=300, bg='#fff')  
 
 scrollX = tk.Scrollbar(frame, orient='horizontal')
 scrollX.pack(side='bottom', fill='x')
@@ -151,9 +162,8 @@ rotate_button = tk.Button(root, text='旋轉90度', command=rotate_image)
 rotate_button.place(x=10, y=490)
 
 
-reset_button = tk.Button(root, text='一鍵重整', command=reset_image)
+reset_button = tk.Button(root, text='一鍵重整', command=lambda: show_image(updated_img=initial_img))
 reset_button.place(x=100, y=490)
-
 
 red_inc_button = tk.Button(root, text='增加紅色', command=lambda: adjust_red(10))
 red_inc_button.place(x=190, y=490)
